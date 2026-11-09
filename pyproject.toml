@@ -1,0 +1,9 @@
+[project]
+name = "techbookfest21-excel-ai-samples"
+version = "1.0.0"
+description = "「面倒なExcel作業はAIにやらせよう」のサンプルデータと生成スクリプト"
+requires-python = ">=3.13"
+dependencies = [
+    "pywin32>=312 ; sys_platform == 'win32'",
+    "xlwings>=0.37.8",
+]
