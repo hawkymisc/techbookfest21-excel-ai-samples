@@ -80,7 +80,7 @@ LOGO_NAVY = (31, 56, 100)
 LOGO_LIGHT = (155, 194, 230)
 NOTES = (
     "※ 金額は販売管理システムの売上明細の税抜金額の合計。返品（数量がマイナスの行）を差し引いた額。",
-    "※ 前月比＝当月売上÷前月売上、前年同月比＝当月売上÷前年同月売上。全社合計と比率は計算式で自動計算する。",
+    "※ 前月比＝当月売上÷前月売上−1、前年同月比＝当月売上÷前年同月売上−1（いずれも増減率）。全社合計と増減率は計算式で自動計算する。",
     "※ 黄色の欄だけを入力する。ロゴ・見出し・部署名・注記・計算式は変更しない。",
 )
 
@@ -111,11 +111,11 @@ class DepartmentSales(NamedTuple):
 
     @property
     def month_over_month(self) -> float | None:
-        return self.current / self.previous_month if self.previous_month else None
+        return self.current / self.previous_month - 1 if self.previous_month else None
 
     @property
     def year_over_year(self) -> float | None:
-        return self.current / self.previous_year if self.previous_year else None
+        return self.current / self.previous_year - 1 if self.previous_year else None
 
 
 def _month_before(month: dt.date) -> dt.date:
@@ -147,7 +147,7 @@ def company_total(summary: Iterable[DepartmentSales]) -> DepartmentSales:
 
 
 def format_ratio(ratio: float | None) -> str:
-    """比率の表示。比較月の売上が0で比率が出せないときは「－」（様式の計算式が空欄を出すのに合わせる）。"""
+    """増減率の表示。比較月の売上が0で増減率が出せないときは「－」（様式の計算式が空欄を出すのに合わせる）。"""
     return "－" if ratio is None else f"{ratio:.1%}"
 
 
@@ -164,7 +164,7 @@ def summary_lines(summary: Iterable[DepartmentSales]) -> list[str]:
 def remarks(summary: Iterable[DepartmentSales]) -> str:
     """特記事項の欄に書く文。前年同月を下回った部署と、全社の前年同月比。"""
     summary = list(summary)
-    below = [s for s in summary if s.year_over_year is not None and s.year_over_year < 1]
+    below = [s for s in summary if s.year_over_year is not None and s.year_over_year < 0]
     total = company_total(summary)
     if below:
         first = "前年同月を下回った部署：" + "、".join(f"{s.department}（{s.year_over_year:.1%}）" for s in below) + "。"
@@ -262,8 +262,8 @@ def _build_form(book: xw.Book) -> None:
             f'=IF(COUNT({col}{first}:{col}{last})=0,"",SUM({col}{first}:{col}{last}))'
         )
     for r in [*DEPT_ROWS, TOTAL_ROW]:
-        sheet.range(f"D{r}").formula = f'=IF(OR(B{r}="",N(C{r})=0),"",B{r}/C{r})'
-        sheet.range(f"F{r}").formula = f'=IF(OR(B{r}="",N(E{r})=0),"",B{r}/E{r})'
+        sheet.range(f"D{r}").formula = f'=IF(OR(B{r}="",N(C{r})=0),"",B{r}/C{r}-1)'
+        sheet.range(f"F{r}").formula = f'=IF(OR(B{r}="",N(E{r})=0),"",B{r}/E{r}-1)'
     sheet.range(f"B{first}:C{TOTAL_ROW}").number_format = "#,##0"
     sheet.range(f"E{first}:E{TOTAL_ROW}").number_format = "#,##0"
     sheet.range(f"D{first}:D{TOTAL_ROW}").number_format = "0.0%"
